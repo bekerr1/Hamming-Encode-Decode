@@ -4,15 +4,22 @@ import (
 	"fmt"
 	"strconv"
 	"math"
-	"time"
+
 )
 
-type BitStream struct {
+type OutgoingBitStream struct {
 	positions int
 	stream uint64
 	encodedStream uint64
 	streamString string
 	encodedString string
+}
+
+type IncomingBitStream struct {
+	encodedStream uint64
+	streamString string
+	errorBitPosition int
+
 }
 
 type Parity struct {
@@ -23,18 +30,26 @@ type Parity struct {
 
 func main() {
 	fmt.Println("hello, world!")
-	start := time.Now()
-	var stream = &BitStream{
-		positions: 0,
-		stream: 0,
+
+	var instream = &IncomingBitStream{
 		encodedStream: 0,
-		streamString: "1010101",
-		encodedString: "",
+		streamString: "001100010100",
+		errorBitPosition: -1,
 	}
-	stream.hammingEncodeString()
-	elapsed := time.Since(start)
-	fmt.Printf("Input: %s ---- Output: %s ---- Took %s to execute",
-		stream.streamString, stream.encodedString, elapsed)
+
+	//start := time.Now()
+	//var outstream = &OutgoingBitStream{
+	//	positions: 0,
+	//	stream: 0,
+	//	encodedStream: 0,
+	//	streamString: "",
+	//	encodedString: "",
+	//}
+	//outstream.hammingEncodeString()
+	instream.hammingDecodeString()
+	//elapsed := time.Since(start)
+	//fmt.Printf("Input: %s ---- Output: %s ---- Took %s to execute",
+	//	stream.streamString, stream.encodedString, elapsed)
 }
 
 /*
@@ -47,7 +62,49 @@ Method: 1) Mark all bit positions that are powers of 2 as parity bits (ex. 1, 2,
  */
 
 
-func (b *BitStream) hammingEncodeString() {
+func (b *IncomingBitStream) hammingDecodeString() {
+
+	reversedString := string(reverseRune([]rune(b.streamString)))
+	sixtyFour, err := strconv.ParseInt(reversedString, 2, 64)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	b.encodedStream = uint64(sixtyFour)
+	b.hammingDecode()
+}
+
+func (b *IncomingBitStream) hammingDecode() {
+
+	var accumulation Parity
+
+	parityPositions := int64ParityPositions()
+
+	for i := 0; i < len(parityPositions); i++ {
+		parity := parityPositions[i]
+		adjustedCheckStream := parity.checkStream << uint(parity.position - 1)
+		fmt.Println(bitString(b.encodedStream))
+		fmt.Println("&'d with")
+		fmt.Println(bitString(adjustedCheckStream))
+		checkResult := b.encodedStream & adjustedCheckStream
+		evenOdd := bitCount(checkResult)
+		if evenOdd % 2 == 0 {
+			//even number of 1's => 0 parity bit - do nothing
+		} else {
+			//odd number of 1's => 1 pairty bit - push by i + 1 and add another 1
+			accumulation.push(uint(i))
+			accumulation.addOne()
+		}
+
+		fmt.Println("Accumulation:")
+		fmt.Println(bitString(accumulation.checkStream))
+
+	}
+
+}
+
+
+func (b *OutgoingBitStream) hammingEncodeString() {
 	//Input bit streams will have 1 to 64 bits - Should take a stream and return a
 	//hamming encoded stream
 
@@ -66,7 +123,7 @@ func (b *BitStream) hammingEncodeString() {
 
 
 
-func (b *BitStream) hammingEncode() {
+func (b *OutgoingBitStream) hammingEncode() {
 	//Input bit streams will have 1 to 64 bits - Should take a stream and return a
 	//hamming encoded stream
 
@@ -144,7 +201,7 @@ func int64ParityPositions() [7]*Parity {
 }
 
 //adds 0 padding to parity positions
-func (b *BitStream) padParityPositions(power int) string {
+func (b *OutgoingBitStream) padParityPositions(power int) string {
 
 	var bitStringArr []rune
 	var paddedArr []rune
@@ -168,6 +225,57 @@ func (b *BitStream) padParityPositions(power int) string {
 	return string(reverseRune(paddedArr))
 }
 
+//add on 1 bits and push bits over by an amount
+func (p *Parity) addon(add int)  {
+	for add > 0 {
+		p.checkStream = p.checkStream << 1
+		p.checkStream ++
+		//p.checkStream << 1
+		add --
+	}
+	bitString(p.checkStream)
+}
+
+func (p *Parity) push(by uint)  {
+	p.checkStream = p.checkStream << by
+}
+
+func (p *Parity) addOne() {
+	p.checkStream += 1
+}
+
+
+//Utility function to count number of '1' bits in an integer
+func bitCount(bits uint64) int {
+
+	var count int = 0
+	for bits != 0 {
+		bitString(bits)
+		bits = bits & (bits - 1)
+		count ++
+	}
+	return count
+}
+
+func bitString(stream uint64) string {
+	return strconv.FormatInt(int64(stream), 2)
+}
+
+func reverseRune(rarr []rune) []rune {
+	var n = len(rarr)
+	for i := 0; i < n/2; i++ {
+		rarr[i], rarr[n-1-i] = rarr[n-1-i], rarr[i]
+	}
+	return rarr
+}
+
+
+
+
+
+
+
+//Utility method to create the int64 in the correct 1/0 patterns - currently not used
 func createPositionBuffers(bitCount int) []*Parity {
 	var positions []*Parity
 
@@ -200,45 +308,3 @@ func createPositionBuffers(bitCount int) []*Parity {
 	}
 	return positions
 }
-
-//add on 1 bits and push bits over by an amount
-func (p *Parity) addon(add int)  {
-	for add > 0 {
-		p.checkStream = p.checkStream << 1
-		p.checkStream ++
-		//p.checkStream << 1
-		add --
-	}
-	bitString(p.checkStream)
-}
-
-func (p *Parity) push(by uint)  {
-	p.checkStream = p.checkStream << by
-}
-
-
-//Utility function to count number of '1' bits in an integer
-func bitCount(bits uint64) int {
-
-	var count int = 0
-	for bits != 0 {
-		bitString(bits)
-		bits = bits & (bits - 1)
-		count ++
-	}
-	return count
-}
-
-func bitString(stream uint64) string {
-	return strconv.FormatInt(int64(stream), 2)
-}
-
-func reverseRune(rarr []rune) []rune {
-	var n = len(rarr)
-	for i := 0; i < n/2; i++ {
-		rarr[i], rarr[n-1-i] = rarr[n-1-i], rarr[i]
-	}
-	return rarr
-}
-
-
