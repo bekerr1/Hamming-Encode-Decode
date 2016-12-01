@@ -18,7 +18,7 @@ type Parity struct {
 //position 16 - 281470681808895 == 00000000000000001111111111111111 cont'd
 //position 32 - 4294967295 == 1111111111111111111111111111111 cont'd
 //position 64 - Int64.Max
-
+//Pre-computed parity bit positions
 func int64ParityPositions() [7]*Parity {
 	return [7]*Parity {
 		&Parity{
@@ -77,6 +77,10 @@ func (p *Parity) push(by uint)  {
 
 func (p *Parity) addOne() {
 	p.checkStream += 1
+}
+
+func (p *Parity) clearStream() {
+	p.checkStream = 0
 }
 
 

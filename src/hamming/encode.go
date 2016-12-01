@@ -14,6 +14,19 @@ type OutgoingBitStream struct {
 	encodedString string
 }
 
+///Returns Encoded String
+func EncodeUsingStreamString(stream string) string {
+	encodeStream := &OutgoingBitStream{
+		positions: 0,
+		stream: 0,
+		encodedStream: 0,
+		streamString: stream,
+		encodedString: "",
+	}
+	encodeStream.hammingEncodeString()
+	return encodeStream.encodedString
+}
+
 
 
 func (b *OutgoingBitStream) hammingEncodeString() {

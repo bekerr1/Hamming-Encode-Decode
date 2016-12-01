@@ -2,33 +2,48 @@ package main
 
 import (
 	"fmt"
-	"math"
+	"os"
 	"hamming"
+	"strings"
 )
 
 
 func main() {
-	fmt.Println("hello, world!")
+	fmt.Printf("Hello, Person!!\n\n")
 
-	var instream = &IncomingBitStream{
-		encodedStream: 0,
-		streamString: "001100010100",
-		errorBitPosition: -1,
+	//hamming.DecodeUsingStreamString("011100101110")
+
+	if len(os.Args) != 3 {
+		argError()
+		os.Exit(1)
 	}
 
-	//start := time.Now()
-	//var outstream = &OutgoingBitStream{
-	//	positions: 0,
-	//	stream: 0,
-	//	encodedStream: 0,
-	//	streamString: "",
-	//	encodedString: "",
-	//}
-	//outstream.hammingEncodeString()
-	instream.hammingDecodeString()
-	//elapsed := time.Since(start)
-	//fmt.Printf("Input: %s ---- Output: %s ---- Took %s to execute",
-	//	stream.streamString, stream.encodedString, elapsed)
+	hammingMethod := os.Args[1]
+	hammingMethod = strings.Title(hammingMethod)
+	stringToUse := os.Args[2]
+
+	switch hammingMethod {
+	case "Decode":
+		//hamming decode
+		decoded := hamming.DecodeUsingStreamString(stringToUse)
+		fmt.Printf("You gave me the stream %s \nI hamming decoded it to %s.\n", stringToUse, decoded)
+
+
+	case "Encode":
+		//hamming encode
+		encoded := hamming.EncodeUsingStreamString(stringToUse)
+		fmt.Printf("You gave me the stream %s \nI hamming encoded it to %s.\n", stringToUse, encoded)
+
+	default:
+		//error in argument
+		argError()
+	}
+
+}
+
+func argError() {
+	fmt.Printf("Args must be 'Encode' or 'Decode' \nand should include a bitstring " +
+		"in \nBigEndian (Network Byte) format.\n")
 }
 
 
